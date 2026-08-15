@@ -1,0 +1,27 @@
+# Secrets / credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Python environments and cache
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+
+# Local/generated data
+data/
+output/
+tmp/
+*.log
+
+# Private working notes
+notes/private/
+
+# macOS / IDE
+.DS_Store
+.idea/
