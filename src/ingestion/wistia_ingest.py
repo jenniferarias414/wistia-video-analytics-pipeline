@@ -14,6 +14,7 @@ API_VERSION = "2026-07"
 MEDIA_IDS = ["8hunphufxp", "9k4tbcdfg0"]
 BASE_URL = "https://api.wistia.com/modern"
 EVENT_PAGE_SIZE = 100
+CHECKPOINT_FILE = Path("data/state/checkpoint.json")
 
 logging.basicConfig(
     level=logging.INFO,
@@ -61,6 +62,21 @@ def save_json(path, payload):
         json.dump(payload, file, indent=2)
 
 
+def parse_timestamp(value):
+    return datetime.fromisoformat(
+        value.replace("Z", "+00:00")
+    )
+
+
+def load_checkpoint():
+    if not CHECKPOINT_FILE.exists():
+        return {}
+
+    return json.loads(
+        CHECKPOINT_FILE.read_text(encoding="utf-8")
+    )
+
+
 def fetch_media_metadata(session):
     params = [
         ("hashed_ids[]", media_id)
@@ -81,9 +97,42 @@ def fetch_media_stats(session, media_id):
     )
 
 
-def fetch_media_events(session, media_id, output_dir):
+def fetch_media_events(
+    session,
+    media_id,
+    output_dir,
+    last_received_at=None,
+):
     page = 1
-    total_events = 0
+    pages_fetched = 0
+    events_fetched = 0
+    events_saved = 0
+    newest_received_at = last_received_at
+
+    params_base = {
+        "media_id": media_id,
+        "per_page": EVENT_PAGE_SIZE,
+    }
+
+    checkpoint_dt = None
+
+    if last_received_at:
+        checkpoint_dt = parse_timestamp(last_received_at)
+
+        params_base["start_date"] = (
+            checkpoint_dt.date().isoformat()
+        )
+
+        logger.info(
+            "Incremental mode for media %s starting from %s",
+            media_id,
+            last_received_at,
+        )
+    else:
+        logger.info(
+            "Full-load mode for media %s",
+            media_id,
+        )
 
     while True:
         logger.info(
@@ -92,35 +141,64 @@ def fetch_media_events(session, media_id, output_dir):
             page,
         )
 
+        params = {
+            **params_base,
+            "page": page,
+        }
+
         events = get_json(
             session,
             f"{BASE_URL}/stats/events",
-            params={
-                "media_id": media_id,
-                "page": page,
-                "per_page": EVENT_PAGE_SIZE,
-            },
+            params=params,
         )
 
         if not events:
             break
 
-        page_file = (
-            output_dir
-            / "events"
-            / media_id
-            / f"page_{page:03d}.json"
-        )
+        pages_fetched += 1
+        events_fetched += len(events)
 
-        save_json(page_file, events)
+        new_events = []
 
-        total_events += len(events)
+        for event in events:
+            received_at = event.get("received_at")
 
-        logger.info(
-            "Saved %s events from page %s",
-            len(events),
-            page,
-        )
+            if not received_at:
+                continue
+
+            event_dt = parse_timestamp(received_at)
+
+            if checkpoint_dt is None or event_dt > checkpoint_dt:
+                new_events.append(event)
+
+            if (
+                newest_received_at is None
+                or event_dt > parse_timestamp(newest_received_at)
+            ):
+                newest_received_at = received_at
+
+        if new_events:
+            page_file = (
+                output_dir
+                / "events"
+                / media_id
+                / f"page_{page:03d}.json"
+            )
+
+            save_json(page_file, new_events)
+
+            events_saved += len(new_events)
+
+            logger.info(
+                "Saved %s new events from page %s",
+                len(new_events),
+                page,
+            )
+        else:
+            logger.info(
+                "No new events to save from page %s",
+                page,
+            )
 
         if len(events) < EVENT_PAGE_SIZE:
             break
@@ -128,8 +206,16 @@ def fetch_media_events(session, media_id, output_dir):
         page += 1
 
     return {
-        "pages_processed": page,
-        "events_processed": total_events,
+        "mode": (
+            "incremental"
+            if last_received_at
+            else "full"
+        ),
+        "checkpoint_before": last_received_at,
+        "checkpoint_after": newest_received_at,
+        "pages_fetched": pages_fetched,
+        "events_fetched": events_fetched,
+        "events_saved": events_saved,
     }
 
 
@@ -150,6 +236,8 @@ def main():
     logger.info("Starting Wistia ingestion run %s", run_id)
 
     session = create_session(api_token)
+    checkpoint = load_checkpoint()
+    updated_checkpoint = dict(checkpoint)
 
     manifest = {
         "run_id": run_id,
@@ -192,13 +280,26 @@ def main():
                 stats,
             )
 
+            last_received_at = checkpoint.get(
+                media_id,
+                {},
+            ).get("last_received_at")
+
             event_summary = fetch_media_events(
                 session,
                 media_id,
                 output_dir,
+                last_received_at,
             )
 
             manifest["media"][media_id] = event_summary
+
+            if event_summary["checkpoint_after"]:
+                updated_checkpoint[media_id] = {
+                    "last_received_at": (
+                        event_summary["checkpoint_after"]
+                    )
+                }
 
         finished_at = datetime.now(timezone.utc)
 
@@ -210,15 +311,26 @@ def main():
             manifest,
         )
 
+        save_json(
+            CHECKPOINT_FILE,
+            updated_checkpoint,
+        )
+
         logger.info("Wistia ingestion completed successfully")
         logger.info("Raw data saved under %s", output_dir)
+        logger.info(
+            "Checkpoint saved to %s",
+            CHECKPOINT_FILE,
+        )
 
         for media_id, summary in manifest["media"].items():
             logger.info(
-                "Media %s: %s events across %s page(s)",
+                "Media %s: mode=%s, fetched=%s, saved=%s, pages=%s",
                 media_id,
-                summary["events_processed"],
-                summary["pages_processed"],
+                summary["mode"],
+                summary["events_fetched"],
+                summary["events_saved"],
+                summary["pages_fetched"],
             )
 
     except requests.RequestException as exc:
