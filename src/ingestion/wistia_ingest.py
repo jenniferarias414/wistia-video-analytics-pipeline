@@ -414,5 +414,14 @@ def main():
         sys.exit(1)
 
 
+def lambda_handler(event, context):
+    main()
+
+    return {
+        "statusCode": 200,
+        "message": "Wistia ingestion completed successfully",
+    }
+
+
 if __name__ == "__main__":
     main()
