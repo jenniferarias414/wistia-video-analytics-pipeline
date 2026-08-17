@@ -19,6 +19,7 @@ EVENT_PAGE_SIZE = 100
 S3_BUCKET = os.getenv("S3_BUCKET")
 AWS_REGION = os.getenv("AWS_REGION", "us-east-2")
 CHECKPOINT_KEY = "state/checkpoint.json"
+GLUE_JOB_NAME = os.getenv("GLUE_JOB_NAME")
 
 logging.basicConfig(
     level=logging.INFO,
@@ -414,13 +415,56 @@ def main():
         logger.exception("Wistia ingestion failed")
         sys.exit(1)
 
+def start_glue_transform():
+    if not GLUE_JOB_NAME:
+        raise RuntimeError(
+            "GLUE_JOB_NAME environment variable is required"
+        )
 
+    glue_client = boto3.client(
+        "glue",
+        region_name=AWS_REGION,
+    )
+
+    try:
+        response = glue_client.start_job_run(
+            JobName=GLUE_JOB_NAME,
+        )
+    except ClientError:
+        logger.exception(
+            "Could not start Glue transformation job"
+        )
+        raise
+
+    job_run_id = response["JobRunId"]
+
+    logger.info(
+        "Started Glue transformation job %s with run ID %s",
+        GLUE_JOB_NAME,
+        job_run_id,
+    )
+
+    return job_run_id
+
+# def lambda_handler(event, context):
+#     main()
+
+#     return {
+#         "statusCode": 200,
+#         "message": "Wistia ingestion completed successfully",
+#     }
 def lambda_handler(event, context):
     main()
 
+    glue_job_run_id = start_glue_transform()
+
     return {
         "statusCode": 200,
-        "message": "Wistia ingestion completed successfully",
+        "message": (
+            "Wistia ingestion completed successfully; "
+            "Glue transformation started"
+        ),
+        "glue_job_run_id": glue_job_run_id,
     }
 
 
