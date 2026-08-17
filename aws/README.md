@@ -4,14 +4,50 @@ This folder documents the AWS resources and IAM relationships used by the Wistia
 
 The files are intended to:
 
-- document the deployed AWS architecture
+- document the AWS architecture that was deployed and validated
 - preserve the IAM policies used by the project
-- provide reference commands for rebuilding resources after teardown
+- provide reference commands for rebuilding and removing project resources
 - explain how the AWS services interact
 
 Secrets are never stored in this folder.
 
 ---
+
+## Environment Status
+
+The live AWS project environment was successfully torn down on **August 17, 2026** after implementation, testing, validation, and project evidence were completed.
+
+The teardown removed the project-specific:
+
+```text
+EventBridge scheduled rule
+Lambda function
+Lambda CloudWatch log group
+Glue PySpark job
+Glue Data Catalog tables and database
+S3 bucket and project data
+Lambda IAM role
+Glue IAM role
+```
+
+The repository remains the durable record of the implementation.
+
+Validation screenshots, SQL results, architecture documentation, source code, IAM policy definitions, and setup/teardown references remain available even though the live AWS resources are no longer running.
+
+AWS lifecycle references:
+
+```text
+aws/setup-reference.sh
+→ documents how the project environment can be recreated
+
+aws/teardown.sh
+→ removes the project resources in dependency-aware order
+```
+
+The setup script is a rebuild reference and should not be run blindly against an environment where similarly named resources already exist.
+
+---
+
 
 ## Resource Flow
 
@@ -679,17 +715,34 @@ Real visitor IP addresses should not be displayed in public screenshots or docum
 
 # Why These Files Are Kept
 
-The live AWS resources can eventually be removed to prevent ongoing project costs.
+The live AWS project resources were removed after validation to prevent unnecessary ongoing costs.
 
-Keeping the policy JSON and setup references in Git preserves:
+The repository preserves the implementation through:
+
+```text
+aws/iam/
+→ IAM trust and project-specific access policies
+
+aws/setup-reference.sh
+→ environment rebuild reference
+
+aws/teardown.sh
+→ dependency-aware cleanup reference
+```
+
+Together with the application code and documentation, these files preserve:
 
 - AWS resource names
 - IAM trust relationships
 - least-privilege permissions
 - service connections
 - deployment configuration
-- the intended scheduling model
-- the transformation configuration
-- the structure needed to understand or recreate the project later
+- the daily scheduling model
+- Lambda-to-Glue automation
+- Glue transformation configuration
+- Glue Data Catalog and Athena setup
+- resource teardown steps
 
-This provides an architecture record even after the live AWS environment has been torn down.
+The live services are no longer required for the repository to demonstrate how the pipeline was designed, built, validated, operated, and cleaned up.
+
+Selected screenshots in the repository preserve evidence from the validated AWS environment before teardown.
