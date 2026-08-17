@@ -10,82 +10,14 @@ The implemented solution is intentionally small and serverless. The data volume 
 
 ## Architecture Diagram
 
-```mermaid
-flowchart LR
+![Wistia Video Analytics Architecture](wistia-video-analytics-architecture.png)
 
-    W["Wistia Stats API"]
+The editable SVG version is also stored in this folder:
 
-    subgraph AWS["AWS - us-east-2"]
-
-        EB["Amazon EventBridge<br/>Daily Scheduled Rule"]
-
-        L["AWS Lambda<br/>Python Ingestion"]
-
-        RAW["Amazon S3 - Raw<br/>Run-Partitioned JSON"]
-
-        STATE["Amazon S3 - State<br/>checkpoint.json"]
-
-        GLUE["AWS Glue<br/>PySpark Transformation"]
-
-        CUR["Amazon S3 - Curated<br/>Snappy Parquet"]
-
-        CAT["AWS Glue<br/>Data Catalog"]
-
-        ATH["Amazon Athena<br/>SQL Analytics"]
-
-        CW["Amazon CloudWatch<br/>Logs / Diagnostics"]
-
-        IAM["AWS IAM<br/>Least-Privilege Roles"]
-    end
-
-    subgraph MODEL["Curated Dimensional Model"]
-        DM["dim_media"]
-        DV["dim_visitor"]
-        FACT["fact_media_engagement"]
-    end
-
-    subgraph DEV["Development / Code Validation"]
-        GH["GitHub Repository"]
-        GHA["GitHub Actions CI<br/>Syntax + pytest +<br/>secret-file check"]
-    end
-
-    BI["Future Analytics Consumers<br/>Tableau / Streamlit / BI Tools"]
-
-    EB -->|"scheduled invocation"| L
-
-    L -->|"Bearer token API requests"| W
-    W -->|"metadata, statistics,<br/>paginated events"| L
-
-    L -->|"raw JSON + run manifest"| RAW
-    L <-->|"read / update watermark"| STATE
-
-    L -->|"glue:StartJobRun<br/>after successful ingestion"| GLUE
-
-    RAW -->|"read accumulated raw data"| GLUE
-
-    GLUE -->|"overwrite curated datasets"| CUR
-
-    CUR --> DM
-    CUR --> DV
-    CUR --> FACT
-
-    DM --> CAT
-    DV --> CAT
-    FACT --> CAT
-
-    CAT --> ATH
-    CUR -. "data remains in S3" .-> ATH
-
-    ATH -. "future integration" .-> BI
-
-    L --> CW
-    GLUE --> CW
-
-    IAM -. "Lambda execution role" .-> L
-    IAM -. "Glue execution role" .-> GLUE
-
-    GH -->|"push / pull request"| GHA
+```text
+architecture/wistia-video-analytics-architecture.svg
 ```
+
 
 ---
 
