@@ -4,6 +4,8 @@ An AWS data engineering pipeline that incrementally collects Wistia video analyt
 
 The pipeline combines scheduled API ingestion, persistent checkpointing, raw and curated S3 storage, AWS Glue transformation, dimensional modeling, automated code validation, and operational logging.
 
+> **Project status:** Implementation and AWS validation are complete. The live project resources were intentionally torn down after validation to prevent ongoing costs. The repository retains the source code, architecture, IAM definitions, validation evidence, and AWS setup/teardown references.
+
 ![Wistia Video Analytics Architecture](architecture/wistia-video-analytics-architecture.png)
 
 ## Architecture
