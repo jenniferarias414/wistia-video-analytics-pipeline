@@ -417,6 +417,11 @@ Additional protections include:
 │
 ├── aws/
 │   ├── iam/
+│   │   ├── glue-s3-access.json
+│   │   ├── glue-trust-policy.json
+│   │   ├── lambda-glue-start-job.json
+│   │   ├── lambda-s3-access.json
+│   │   └── lambda-trust-policy.json
 │   ├── README.md
 │   ├── setup-reference.sh
 │   └── teardown.sh
