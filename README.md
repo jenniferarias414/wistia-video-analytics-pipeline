@@ -418,7 +418,8 @@ Additional protections include:
 ├── aws/
 │   ├── iam/
 │   ├── README.md
-│   └── setup-reference.sh
+│   ├── setup-reference.sh
+│   └── teardown.sh
 │
 ├── screenshots/
 │   └── selected validation evidence
