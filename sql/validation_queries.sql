@@ -43,3 +43,13 @@ SELECT
     COUNT(*) AS fact_rows,
     COUNT(DISTINCT engagement_id) AS distinct_engagement_ids
 FROM wistia_video_analytics.fact_media_engagement;
+
+
+-- Curated fact-table uniqueness check
+-- The source full load contained duplicate event_key values.
+-- The transformation keeps one record per unique Wistia event.
+
+SELECT
+    COUNT(*) AS fact_rows,
+    COUNT(DISTINCT engagement_id) AS distinct_engagement_ids
+FROM wistia_video_analytics.fact_media_engagement;
