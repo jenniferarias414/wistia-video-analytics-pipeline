@@ -281,11 +281,11 @@ fact_media_engagement = (
         (
             col("duration_seconds")
             * col("percent_viewed")
-            / lit(100.0)
         ).alias("total_watch_time"),
-        col("percent_viewed").cast("double").alias(
-            "watched_percent"
-        ),
+        (
+            col("percent_viewed").cast("double")
+            * lit(100.0)
+        ).alias("watched_percent"),
     )
 )
 
