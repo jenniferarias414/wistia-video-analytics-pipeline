@@ -1,0 +1,10 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": "glue:StartJobRun",
+      "Resource": "arn:aws:glue:us-east-2:272987324508:job/wistia-video-analytics-transform"
+    }
+  ]
+}
